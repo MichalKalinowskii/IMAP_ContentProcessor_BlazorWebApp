@@ -1,0 +1,68 @@
+﻿@page "/google-login-handle"
+@using Google.Apis.Auth.OAuth2
+@using Google.Apis.Auth.OAuth2.Flows
+@using Google.Apis.Auth.OAuth2.Responses
+@using Google.Apis.Services
+@using IMAP_ContentProcessor_BlazorWebApp.Domain.Models
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+
+@code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpContext.User.Identity!.IsAuthenticated)
+        {          
+            List<MailContent> EmailList = new List<MailContent>();
+            var gmailService = await GetGmailService();
+            UsersResource.MessagesResource.ListRequest ListRequest = gmailService.Users.Messages.List("zleconezadania@gmail.com");
+            ListRequest.LabelIds = "INBOX";
+            ListRequest.IncludeSpamTrash = false;
+            ListRequest.Q = "is:unread";
+
+            ListMessagesResponse ListResponse = ListRequest.Execute();
+        }
+    }
+
+    private async Task<GmailService> GetGmailService() {
+        var authService = HttpContext.RequestServices.GetService<IAuthenticationService>();
+        var authenticateResult = await authService!.AuthenticateAsync(HttpContext, "IMAP_ContentProcessor_BlazorWebApp");
+
+        if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
+        {
+            return null;
+        }
+
+        var accessToken = authenticateResult.Properties.GetTokenValue("access_token");
+        var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token");
+
+
+        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new Google.Apis.Auth.OAuth2.ClientSecrets
+                {
+                    ClientId = "",
+                    ClientSecret = ""
+                },
+                Scopes = new[] { GmailService.Scope.GmailCompose, GmailService.Scope.GmailReadonly, GmailService.Scope.GmailModify  },
+            });
+
+        var credential = new Google.Apis.Auth.OAuth2.UserCredential(flow, authenticateResult.Principal.Identity.Name, new Google.Apis.Auth.OAuth2.Responses.TokenResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresInSeconds = 120000,
+                TokenType = "Bearer"
+            });
+
+
+        return new GmailService(new BaseClientService.Initializer()
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Zamowienia",
+        });
+    }
+}
