@@ -12,6 +12,8 @@
     [CascadingParameter]
     public HttpContext HttpContext { get; set; }
 
+    const string hostMail = "zleconezadania@gmail.com";
+
     protected override async Task OnInitializedAsync()
     {
         if (HttpContext.User.Identity!.IsAuthenticated)
@@ -24,7 +26,49 @@
             ListRequest.Q = "is:unread";
 
             ListMessagesResponse ListResponse = ListRequest.Execute();
+
+            foreach (var messageData in ListResponse.Messages) 
+            {
+                UsersResource.MessagesResource.GetRequest messageGmail = gmailService.Users.Messages.Get(hostMail, messageData.Id);
+
+                var messageDetail = messageGmail.Execute();
+
+                SaveAttachments(messageDetail, gmailService);
+            }
         }
+    }
+
+    public static void SaveAttachments(Message message, GmailService gmailService)
+    {
+        try
+        {
+            IList<MessagePart> parts = message.Payload.Parts;
+
+            foreach (MessagePart part in parts)
+            {
+                if (!String.IsNullOrEmpty(part.Filename))
+                {
+                    MessagePartBody attachPart = gmailService.Users.Messages.Attachments.Get(hostMail, message.Id, part.Body.AttachmentId).Execute();
+
+                    byte[] data = Base64ToByte(attachPart.Data);
+                    File.WriteAllBytes(Path.Combine("C:\\Users\\admin\\Desktop\\gmail\\zamowienia", part.Filename), data);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("An error occurred: " + e.Message);
+        }
+    }
+
+    public static byte[] Base64ToByte(string base64Test)
+    {
+        string encodedText = string.Empty;
+        encodedText = base64Test.Replace("-", "+");
+        encodedText = encodedText.Replace("_", "/");
+        encodedText = encodedText.Replace(" ", "+");
+
+        return Convert.FromBase64String(encodedText);
     }
 
     private async Task<GmailService> GetGmailService() {
@@ -37,8 +81,7 @@
         }
 
         var accessToken = authenticateResult.Properties.GetTokenValue("access_token");
-        var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token");
-
+        var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token") ?? "";      
 
         var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {

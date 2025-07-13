@@ -10,7 +10,8 @@
     protected override async Task OnInitializedAsync()
     {
         var authProps = new AuthenticationProperties {
-            RedirectUri = "/google-login-handle"
+            RedirectUri = "/google-login-handle",
+            AllowRefresh = true
         };
 
         var result = TypedResults.Challenge(authProps, [GoogleDefaults.AuthenticationScheme]);

@@ -28,7 +28,7 @@ builder.Services.AddAuthentication(options =>
         options.SignInScheme = AuthScheme;
         options.AccessType = "offline";
         options.AccessDeniedPath = "/";
-        options.Scope.Add(Google.Apis.Gmail.v1.GmailService.Scope.GmailCompose);
+        options.Scope.Add(GmailService.Scope.GmailCompose);
         options.Scope.Add(GmailService.Scope.GmailModify);
         options.Scope.Add(GmailService.Scope.GmailReadonly);
         options.SaveTokens = true;
