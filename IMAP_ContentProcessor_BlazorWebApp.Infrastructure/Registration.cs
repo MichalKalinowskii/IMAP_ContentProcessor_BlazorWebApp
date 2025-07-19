@@ -14,10 +14,10 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Infrastructure
     {
         public static void AddInfrastucture(this IServiceCollection services, IConfiguration configuration)
         {
-            var connectionString = configuration.GetConnectionString("MySqlConnectionString");
+            var connectionString = configuration["MySqlConnectionString"];
 
-            services.AddDbContext<ZamowieniaImapContext>(options => 
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            services.AddDbContext<ZamowieniaImapContext>(options =>
+                options.UseMySQL(connectionString!)
             );
 
             services.AddSingleton(x => new SqlConnectionFactory(connectionString!));                  

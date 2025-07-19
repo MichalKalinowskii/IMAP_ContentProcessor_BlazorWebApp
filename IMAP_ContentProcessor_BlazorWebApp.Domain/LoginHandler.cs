@@ -30,7 +30,7 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
 
         public async Task GetOrdersInformation(AuthenticateResult authenticateResult)
         {
-            if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
+             if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
             {
                 return;
             }
