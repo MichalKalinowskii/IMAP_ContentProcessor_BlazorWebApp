@@ -1,111 +1,28 @@
 ﻿@page "/google-login-handle"
-@using Google.Apis.Auth.OAuth2
-@using Google.Apis.Auth.OAuth2.Flows
-@using Google.Apis.Auth.OAuth2.Responses
-@using Google.Apis.Services
-@using IMAP_ContentProcessor_BlazorWebApp.Domain.Models
+@using IMAP_ContentProcessor_BlazorWebApp.Domain
 @using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
-
 
 @code {
     [CascadingParameter]
     public HttpContext HttpContext { get; set; }
 
-    const string hostMail = "zleconezadania@gmail.com";
+    private readonly ILoginHandler loginHandler;
+    private readonly IConfiguration configuration;
+
+    public GoogleLoginHandle(ILoginHandler loginHandler, IConfiguration configuration)
+    {
+        this.loginHandler = loginHandler;
+        this.configuration = configuration;
+    }
 
     protected override async Task OnInitializedAsync()
     {
         if (HttpContext.User.Identity!.IsAuthenticated)
-        {          
-            List<MailContent> EmailList = new List<MailContent>();
-            var gmailService = await GetGmailService();
-            UsersResource.MessagesResource.ListRequest ListRequest = gmailService.Users.Messages.List("zleconezadania@gmail.com");
-            ListRequest.LabelIds = "INBOX";
-            ListRequest.IncludeSpamTrash = false;
-            ListRequest.Q = "is:unread";
-
-            ListMessagesResponse ListResponse = ListRequest.Execute();
-
-            foreach (var messageData in ListResponse.Messages) 
-            {
-                UsersResource.MessagesResource.GetRequest messageGmail = gmailService.Users.Messages.Get(hostMail, messageData.Id);
-
-                var messageDetail = messageGmail.Execute();
-
-                SaveAttachments(messageDetail, gmailService);
-            }
-        }
-    }
-
-    public static void SaveAttachments(Message message, GmailService gmailService)
-    {
-        try
         {
-            IList<MessagePart> parts = message.Payload.Parts;
+            var authService = HttpContext.RequestServices.GetService<IAuthenticationService>();
+            var authenticateResult = await authService!.AuthenticateAsync(HttpContext, configuration["AuthScheme"]);
 
-            foreach (MessagePart part in parts)
-            {
-                if (!String.IsNullOrEmpty(part.Filename))
-                {
-                    MessagePartBody attachPart = gmailService.Users.Messages.Attachments.Get(hostMail, message.Id, part.Body.AttachmentId).Execute();
-
-                    byte[] data = Base64ToByte(attachPart.Data);
-                    File.WriteAllBytes(Path.Combine("C:\\Users\\admin\\Desktop\\gmail\\zamowienia", part.Filename), data);
-                }
-            }
+            loginHandler.GetOrdersInformation(authenticateResult);
         }
-        catch (Exception e)
-        {
-            Console.WriteLine("An error occurred: " + e.Message);
-        }
-    }
-
-    public static byte[] Base64ToByte(string base64Test)
-    {
-        string encodedText = string.Empty;
-        encodedText = base64Test.Replace("-", "+");
-        encodedText = encodedText.Replace("_", "/");
-        encodedText = encodedText.Replace(" ", "+");
-
-        return Convert.FromBase64String(encodedText);
-    }
-
-    private async Task<GmailService> GetGmailService() {
-        var authService = HttpContext.RequestServices.GetService<IAuthenticationService>();
-        var authenticateResult = await authService!.AuthenticateAsync(HttpContext, "IMAP_ContentProcessor_BlazorWebApp");
-
-        if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
-        {
-            return null;
-        }
-
-        var accessToken = authenticateResult.Properties.GetTokenValue("access_token");
-        var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token") ?? "";      
-
-        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
-            {
-                ClientSecrets = new Google.Apis.Auth.OAuth2.ClientSecrets
-                {
-                    ClientId = "",
-                    ClientSecret = ""
-                },
-                Scopes = new[] { GmailService.Scope.GmailCompose, GmailService.Scope.GmailReadonly, GmailService.Scope.GmailModify  },
-            });
-
-        var credential = new Google.Apis.Auth.OAuth2.UserCredential(flow, authenticateResult.Principal.Identity.Name, new Google.Apis.Auth.OAuth2.Responses.TokenResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresInSeconds = 120000,
-                TokenType = "Bearer"
-            });
-
-
-        return new GmailService(new BaseClientService.Initializer()
-        {
-            HttpClientInitializer = credential,
-            ApplicationName = "Zamowienia",
-        });
     }
 }

@@ -1,5 +1,7 @@
 using Google.Apis.Gmail.v1;
 using IMAP_ContentProcessor_BlazorWebApp.Components;
+using IMAP_ContentProcessor_BlazorWebApp.Infrastructure;
+using IMAP_ContentProcessor_BlazorWebApp.Domain;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,25 +9,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-const string AuthScheme = "IMAP_ContentProcessor_BlazorWebApp";
-
-//builder.Services.AddCascadingAuthenticationState();
-
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultScheme = AuthScheme;
+    options.DefaultScheme = builder.Configuration["AuthScheme"];
     options.DefaultChallengeScheme = Google.Apis.Auth.AspNetCore3.GoogleOpenIdConnectDefaults.AuthenticationScheme;
 })
-    //.AddCookie(AuthScheme)
-    .AddCookie(AuthScheme)
+    .AddCookie(builder.Configuration["AuthScheme"]!)
     .AddGoogle(options =>
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
-        options.SignInScheme = AuthScheme;
+        options.SignInScheme = builder.Configuration["AuthScheme"];
         options.AccessType = "offline";
         options.AccessDeniedPath = "/";
         options.Scope.Add(GmailService.Scope.GmailCompose);
@@ -36,6 +33,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddInfrastucture(builder.Configuration);
+builder.Services.AddDomain();
 
 var app = builder.Build();
 

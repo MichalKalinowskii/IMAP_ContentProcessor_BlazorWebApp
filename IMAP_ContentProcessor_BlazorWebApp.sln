@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IMAP_ContentProcessor_BlazorWebApp", "IMAP_ContentProcessor_BlazorWebApp\IMAP_ContentProcessor_BlazorWebApp.csproj", "{5023C381-26CE-4E47-9C78-6322DFAFB91B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IMAP_ContentProcessor_BlazorWebApp.Infrastructure", "IMAP_ContentProcessor_BlazorWebApp.Infrastructure\IMAP_ContentProcessor_BlazorWebApp.Infrastructure.csproj", "{46641053-4928-446B-B59B-CF90751667D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IMAP_ContentProcessor_BlazorWebApp.Domain", "IMAP_ContentProcessor_BlazorWebApp.Domain\IMAP_ContentProcessor_BlazorWebApp.Domain.csproj", "{7899EE6A-0530-4F1B-AC28-8B78E43B2727}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{5023C381-26CE-4E47-9C78-6322DFAFB91B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5023C381-26CE-4E47-9C78-6322DFAFB91B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5023C381-26CE-4E47-9C78-6322DFAFB91B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46641053-4928-446B-B59B-CF90751667D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46641053-4928-446B-B59B-CF90751667D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46641053-4928-446B-B59B-CF90751667D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46641053-4928-446B-B59B-CF90751667D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7899EE6A-0530-4F1B-AC28-8B78E43B2727}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7899EE6A-0530-4F1B-AC28-8B78E43B2727}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7899EE6A-0530-4F1B-AC28-8B78E43B2727}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7899EE6A-0530-4F1B-AC28-8B78E43B2727}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
