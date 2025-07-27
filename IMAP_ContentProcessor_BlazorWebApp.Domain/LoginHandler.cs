@@ -6,6 +6,8 @@ using IMAP_ContentProcessor_BlazorWebApp.Domain.Models;
 using IMAP_ContentProcessor_BlazorWebApp.Infrastructure.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -30,13 +32,13 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
 
         public async Task GetOrdersInformation(AuthenticateResult authenticateResult)
         {
-             if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
+            if (!authenticateResult.Succeeded || authenticateResult.Properties?.GetTokenValue("access_token") == null)
             {
                 return;
             }
 
             List<MailContent> EmailList = new List<MailContent>();
-            var gmailService = GetGmailService(authenticateResult);
+            var gmailService = await GetGmailService(authenticateResult);
 
             UsersResource.MessagesResource.ListRequest ListRequest = gmailService.Users.Messages.List(hostMail);
             ListRequest.LabelIds = "INBOX";
@@ -53,7 +55,13 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
 
                 var messageDetail = messageGmail.Execute();
 
-                SaveAttachments(messageDetail, gmailService);
+                if (!(messageDetail.Payload.Headers.FirstOrDefault(x => x.Name.Equals("From"))?.Value == "sklep@example.com")
+                    && !messageDetail.Snippet.Contains("Simplelightcandle"))
+                {
+                    continue;
+                }
+
+                //await SaveAttachments(messageDetail, gmailService);
             }
         }
 
@@ -65,7 +73,7 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
             gmailService.Users.Messages.BatchModify(mods, hostMail).Execute();
         }
 
-        private void SaveAttachments(Message message, GmailService gmailService)
+        private async Task SaveAttachments(Message message, GmailService gmailService)
         {
             try
             {
@@ -78,8 +86,15 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
                         MessagePartBody attachPart = gmailService.Users.Messages.Attachments.Get(hostMail, message.Id, part.Body.AttachmentId).Execute();
 
                         byte[] data = Base64ToByte(attachPart.Data);
-                        File.WriteAllBytes(Path.Combine("C:\\Users\\admin\\Desktop\\gmail\\zamowienia", part.Filename), data);
+
+                        context.Set<Mail>().Add(new Mail
+                        {
+                            Eml = data
+                        });
+
+                        await context.SaveChangesAsync();
                     }
+                    //File.WriteAllBytes(Path.Combine("C:\\Users\\admin\\Desktop\\gmail\\zamowienia", part.Filename), data);              
                 }
             }
             catch (Exception e)
@@ -98,10 +113,69 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
             return Convert.FromBase64String(encodedText);
         }
 
-        private GmailService GetGmailService(AuthenticateResult authenticateResult)
+        private async Task<string> RegisterRefreshToken(AuthenticateResult authenticateResult)
+        {
+            var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token");// ?? configuration["refreshtoken"];
+
+            if (refreshToken == null)
+            {
+                refreshToken = await context.Set<Token>().Where(x => x.Email == hostMail)
+                    .Select(x => x.RefreshToken)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                var token = await context.Set<Token>().Where(x => x.Email == hostMail).FirstOrDefaultAsync();
+
+                if (token is null)
+                {
+                    context.Set<Token>().Add(new Token
+                    {
+                        Email = hostMail,
+                        RefreshToken = refreshToken,
+                    });
+                }
+                else
+                {
+                    context.Set<Token>().Where(x => x.Email == hostMail)
+                        .ExecuteUpdate(x => x.SetProperty(y => y.RefreshToken, refreshToken));
+                }
+                context.SaveChanges();
+            }
+
+            return refreshToken!;
+        }
+
+        private async Task<GmailService> GetGmailService(AuthenticateResult authenticateResult)
         {
             var accessToken = authenticateResult.Properties.GetTokenValue("access_token");
-            var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token") ?? configuration["refreshtoken"];
+            var refreshToken = authenticateResult.Properties.GetTokenValue("refresh_token");// ?? configuration["refreshtoken"];
+
+            if (refreshToken == null)
+            {
+                refreshToken = await context.Set<Token>().Where(x => x.Email == hostMail)
+                    .Select(x => x.RefreshToken)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                var token = await context.Set<Token>().Where(x => x.Email == hostMail).FirstOrDefaultAsync();
+
+                if (token is null)
+                {
+                    context.Set<Token>().Add(new Token
+                    {
+                        Email = hostMail,
+                        RefreshToken = refreshToken,
+                    });
+                }
+                else
+                {
+                    context.Set<Token>().Where(x => x.Email == hostMail)
+                        .ExecuteUpdate(x => x.SetProperty(y => y.RefreshToken, refreshToken));
+                }
+                context.SaveChanges();
+            }
 
             var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {
@@ -112,7 +186,7 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
                 },
                 Scopes = new[] { GmailService.Scope.GmailCompose, GmailService.Scope.GmailReadonly, GmailService.Scope.GmailModify },
             });
-
+            
             var credential = new Google.Apis.Auth.OAuth2.UserCredential(flow, authenticateResult.Principal.Identity.Name, new Google.Apis.Auth.OAuth2.Responses.TokenResponse
             {
                 AccessToken = accessToken,
@@ -120,13 +194,11 @@ namespace IMAP_ContentProcessor_BlazorWebApp.Domain
                 TokenType = "Bearer"
             });
 
-
             return new GmailService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Zamowienia",
             });
         }
-
     }
 }

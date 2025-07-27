@@ -22,7 +22,7 @@
             var authService = HttpContext.RequestServices.GetService<IAuthenticationService>();
             var authenticateResult = await authService!.AuthenticateAsync(HttpContext, configuration["AuthScheme"]);
 
-            loginHandler.GetOrdersInformation(authenticateResult);
+            await loginHandler.GetOrdersInformation(authenticateResult);
         }
     }
 }
